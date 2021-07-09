@@ -12,15 +12,18 @@ import java.sql.Date;
 @Transactional(readOnly = true)
 public class SqlTaskNotificationManager extends SqlMapperBasedServiceBase<SqlNotificationEntityMapper> implements
         TaskNotificationManager, TaskNotificationManagerEx {
+    @Override
     public boolean isNotified(String taskId) {
         return !_mapper.findByTaskId(taskId).isEmpty();
     }
 
+    @Override
     @Transactional(readOnly = false, propagation = Propagation.REQUIRED)
     public void removeAll() {
         _mapper.deleteAll();
     }
 
+    @Override
     @Transactional(readOnly = false, propagation = Propagation.REQUIRED)
     public void setNotified(String taskId) {
         SqlNotificationEntity sde = new SqlNotificationEntity();

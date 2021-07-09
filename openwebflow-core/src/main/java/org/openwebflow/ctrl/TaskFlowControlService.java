@@ -5,6 +5,9 @@ import org.activiti.engine.impl.pvm.process.ActivityImpl;
 
 import java.io.IOException;
 
+/**
+ * 流程跳转控制服务
+ */
 public interface TaskFlowControlService {
 
     /**

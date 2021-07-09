@@ -26,37 +26,36 @@ import java.util.List;
 public class DefaultTaskFlowControlService implements TaskFlowControlService {
     RuntimeActivityDefinitionManager _activitiesCreationStore;
 
-    ProcessDefinitionEntity _processDefinition;
+    ProcessDefinitionEntity processDefinition;
 
-    ProcessEngine _processEngine;
+    ProcessEngine processEngine;
 
-    private String _processInstanceId;
+    private String processInstanceId;
 
     public DefaultTaskFlowControlService(RuntimeActivityDefinitionManager activitiesCreationStore,
                                          ProcessEngine processEngine, String processId) {
         _activitiesCreationStore = activitiesCreationStore;
-        _processEngine = processEngine;
-        _processInstanceId = processId;
+        this.processEngine = processEngine;
+        processInstanceId = processId;
 
-        String processDefId = _processEngine.getRuntimeService().createProcessInstanceQuery()
-                .processInstanceId(_processInstanceId).singleResult().getProcessDefinitionId();
+        String processDefId = this.processEngine.getRuntimeService().createProcessInstanceQuery()
+                .processInstanceId(processInstanceId).singleResult().getProcessDefinitionId();
 
-        _processDefinition = ProcessDefinitionUtils.getProcessDefinition(_processEngine, processDefId);
+        processDefinition = ProcessDefinitionUtils.getProcessDefinition(this.processEngine, processDefId);
     }
 
     private ActivityImpl[] cloneAndMakeChain(String prototypeActivityId, String nextActivityId, String... assignees)
             throws Exception {
         SimpleRuntimeActivityDefinitionEntity info = new SimpleRuntimeActivityDefinitionEntity();
-        info.setProcessDefinitionId(_processDefinition.getId());
-        info.setProcessInstanceId(_processInstanceId);
+        info.setProcessDefinitionId(processDefinition.getId());
+        info.setProcessInstanceId(processInstanceId);
 
         RuntimeActivityDefinitionEntityIntepreter radei = new RuntimeActivityDefinitionEntityIntepreter(info);
         radei.setPrototypeActivityId(prototypeActivityId);
         radei.setAssignees(CollectionUtils.arrayToList(assignees));
         radei.setNextActivityId(nextActivityId);
 
-        ActivityImpl[] activities = new ChainedActivitiesCreator().createActivities(_processEngine, _processDefinition,
-                info);
+        ActivityImpl[] activities = new ChainedActivitiesCreator().createActivities(processEngine, processDefinition, info);
 
         moveTo(activities[0].getId());
         recordActivitiesCreation(info);
@@ -65,16 +64,16 @@ public class DefaultTaskFlowControlService implements TaskFlowControlService {
     }
 
     private void executeCommand(Command<java.lang.Void> command) {
-        ((RuntimeServiceImpl) _processEngine.getRuntimeService()).getCommandExecutor().execute(command);
+        ((RuntimeServiceImpl) processEngine.getRuntimeService()).getCommandExecutor().execute(command);
     }
 
     private TaskEntity getCurrentTask() {
-        return (TaskEntity) _processEngine.getTaskService().createTaskQuery().processInstanceId(_processInstanceId)
+        return (TaskEntity) processEngine.getTaskService().createTaskQuery().processInstanceId(processInstanceId)
                 .active().singleResult();
     }
 
     private TaskEntity getTaskById(String taskId) {
-        return (TaskEntity) _processEngine.getTaskService().createTaskQuery().taskId(taskId).singleResult();
+        return (TaskEntity) processEngine.getTaskService().createTaskQuery().taskId(taskId).singleResult();
     }
 
     /**
@@ -87,7 +86,7 @@ public class DefaultTaskFlowControlService implements TaskFlowControlService {
         assigneeList.addAll(CollectionUtils.arrayToList(assignees));
         String[] newAssignees = assigneeList.toArray(new String[0]);
 
-        ActivityImpl prototypeActivity = ProcessDefinitionUtils.getActivity(_processEngine, _processDefinition.getId(),
+        ActivityImpl prototypeActivity = ProcessDefinitionUtils.getActivity(processEngine, processDefinition.getId(),
                 targetTaskDefinitionKey);
 
         return cloneAndMakeChain(targetTaskDefinitionKey, prototypeActivity.getOutgoingTransitions().get(0)
@@ -110,7 +109,7 @@ public class DefaultTaskFlowControlService implements TaskFlowControlService {
     @Override
     public void moveBack(TaskEntity currentTaskEntity) throws Exception {
         ActivityImpl activity = (ActivityImpl) ProcessDefinitionUtils
-                .getActivity(_processEngine, currentTaskEntity.getProcessDefinitionId(),
+                .getActivity(processEngine, currentTaskEntity.getProcessDefinitionId(),
                         currentTaskEntity.getTaskDefinitionKey()).getIncomingTransitions().get(0).getSource();
 
         moveTo(currentTaskEntity, activity);
@@ -124,7 +123,7 @@ public class DefaultTaskFlowControlService implements TaskFlowControlService {
     @Override
     public void moveForward(TaskEntity currentTaskEntity) throws Exception {
         ActivityImpl activity = (ActivityImpl) ProcessDefinitionUtils
-                .getActivity(_processEngine, currentTaskEntity.getProcessDefinitionId(),
+                .getActivity(processEngine, currentTaskEntity.getProcessDefinitionId(),
                         currentTaskEntity.getTaskDefinitionKey()).getOutgoingTransitions().get(0).getDestination();
 
         moveTo(currentTaskEntity, activity);
@@ -158,7 +157,7 @@ public class DefaultTaskFlowControlService implements TaskFlowControlService {
      */
     @Override
     public void moveTo(TaskEntity currentTaskEntity, String targetTaskDefinitionKey) throws Exception {
-        ActivityImpl activity = ProcessDefinitionUtils.getActivity(_processEngine,
+        ActivityImpl activity = ProcessDefinitionUtils.getActivity(processEngine,
                 currentTaskEntity.getProcessDefinitionId(), targetTaskDefinitionKey);
 
         moveTo(currentTaskEntity, activity);
@@ -173,7 +172,7 @@ public class DefaultTaskFlowControlService implements TaskFlowControlService {
      * 分裂某节点为多实例节点
      *
      * @param targetTaskDefinitionKey
-     * @param assignee
+     * @param assignees
      * @throws IOException
      * @throws IllegalAccessException
      * @throws IllegalArgumentException
@@ -182,8 +181,8 @@ public class DefaultTaskFlowControlService implements TaskFlowControlService {
     public ActivityImpl split(String targetTaskDefinitionKey, boolean isSequential, String... assignees)
             throws Exception {
         SimpleRuntimeActivityDefinitionEntity info = new SimpleRuntimeActivityDefinitionEntity();
-        info.setProcessDefinitionId(_processDefinition.getId());
-        info.setProcessInstanceId(_processInstanceId);
+        info.setProcessDefinitionId(processDefinition.getId());
+        info.setProcessInstanceId(processInstanceId);
 
         RuntimeActivityDefinitionEntityIntepreter radei = new RuntimeActivityDefinitionEntityIntepreter(info);
 
@@ -191,7 +190,7 @@ public class DefaultTaskFlowControlService implements TaskFlowControlService {
         radei.setAssignees(CollectionUtils.arrayToList(assignees));
         radei.setSequential(isSequential);
 
-        ActivityImpl clone = new MultiInstanceActivityCreator().createActivities(_processEngine, _processDefinition,
+        ActivityImpl clone = new MultiInstanceActivityCreator().createActivities(processEngine, processDefinition,
                 info)[0];
 
         TaskEntity currentTaskEntity = getCurrentTask();

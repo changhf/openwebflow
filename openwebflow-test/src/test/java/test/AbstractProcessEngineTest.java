@@ -45,9 +45,9 @@ import java.util.Map;
 public abstract class AbstractProcessEngineTest {
     ProcessEngineTool _tool;
 
-    ProcessEngine _processEngine;
+    ProcessEngine processEngine;
 
-    ApplicationContext _ctx;
+    ApplicationContext applicationContext;
 
     ActivityPermissionManagerEx _permissions;
 
@@ -60,18 +60,18 @@ public abstract class AbstractProcessEngineTest {
         rebuildApplicationContext();
 
         _permissions.removeAll();
-        _ctx.getBean(TaskNotificationManagerEx.class).removeAll();
-        _ctx.getBean(RuntimeActivityDefinitionManager.class).removeAll();
+        applicationContext.getBean(TaskNotificationManagerEx.class).removeAll();
+        applicationContext.getBean(RuntimeActivityDefinitionManager.class).removeAll();
 
         //用户关系管理
-        IdentityMembershipManagerEx myMembershipManager = _ctx.getBean(IdentityMembershipManagerEx.class);
+        IdentityMembershipManagerEx myMembershipManager = applicationContext.getBean(IdentityMembershipManagerEx.class);
         myMembershipManager.removeAll();
         myMembershipManager.saveMembership("bluejoe", "engineering");
         myMembershipManager.saveMembership("gonzo", "sales");
         myMembershipManager.saveMembership("kermit", "management");
 
         //设置用户email等信息
-        UserDetailsManagerEx userDetailsStore = _ctx.getBean(UserDetailsManagerEx.class);
+        UserDetailsManagerEx userDetailsStore = applicationContext.getBean(UserDetailsManagerEx.class);
         userDetailsStore.removeAll();
         userDetailsStore.saveUserDetails(new SimpleUserDetailsEntity("bluejoe", "白乔", "bluejoe2008@gmail.com",
                 "13800138000"));
@@ -81,10 +81,10 @@ public abstract class AbstractProcessEngineTest {
         _delegations.removeAll();
 
         //清除自定义活动
-        _ctx.getBean(RuntimeActivityDefinitionManager.class).removeAll();
+        applicationContext.getBean(RuntimeActivityDefinitionManager.class).removeAll();
 
         // 取model，该model会自动注册
-        RepositoryService repositoryService = _processEngine.getRepositoryService();
+        RepositoryService repositoryService = processEngine.getRepositoryService();
         Model model = repositoryService.createModelQuery().modelKey("test1.bpmn").singleResult();
         //部署该model
         if (repositoryService.createProcessDefinitionQuery().processDefinitionKey("test1").list().isEmpty()) {
@@ -99,15 +99,15 @@ public abstract class AbstractProcessEngineTest {
     }
 
     protected void rebuildApplicationContext() {
-        _ctx = new ClassPathXmlApplicationContext(getConfigFilePath());
-        _tool = _ctx.getBean(ProcessEngineTool.class);
+        applicationContext = new ClassPathXmlApplicationContext(getConfigFilePath());
+        _tool = applicationContext.getBean(ProcessEngineTool.class);
         Assert.assertNotNull(_tool);
-        _processEngine = _tool.getProcessEngine();
+        processEngine = _tool.getProcessEngine();
 
-        _permissions = _ctx.getBean(ActivityPermissionManagerEx.class);
+        _permissions = applicationContext.getBean(ActivityPermissionManagerEx.class);
         //代理关系
-        _delegations = _ctx.getBean(DelegationManagerEx.class);
-        _taskFlowControlServiceFactory = _ctx.getBean(DefaultTaskFlowControlServiceFactory.class);
+        _delegations = applicationContext.getBean(DelegationManagerEx.class);
+        _taskFlowControlServiceFactory = applicationContext.getBean(DefaultTaskFlowControlServiceFactory.class);
     }
 
     protected abstract String getConfigFilePath();
@@ -115,12 +115,12 @@ public abstract class AbstractProcessEngineTest {
     @After
     public void tearDown() throws Exception {
         _permissions.removeAll();
-        _ctx.getBean(TaskNotificationManagerEx.class).removeAll();
-        _ctx.getBean(RuntimeActivityDefinitionManager.class).removeAll();
-        _processEngine.close();
-        _processEngine = null;
-        ((AbstractApplicationContext) _ctx).getBeanFactory().destroySingletons();
-        _ctx = null;
+        applicationContext.getBean(TaskNotificationManagerEx.class).removeAll();
+        applicationContext.getBean(RuntimeActivityDefinitionManager.class).removeAll();
+        processEngine.close();
+        processEngine = null;
+        ((AbstractApplicationContext) applicationContext).getBeanFactory().destroySingletons();
+        applicationContext = null;
     }
 
     /**
@@ -128,38 +128,40 @@ public abstract class AbstractProcessEngineTest {
      */
     @Test
     public void testInsertTasksBefore() throws Exception {
-        ProcessInstance instance = _processEngine.getRuntimeService().startProcessInstanceByKey("test2");
-        TaskService taskService = _processEngine.getTaskService();
+        ProcessInstance instance = processEngine.getRuntimeService().startProcessInstanceByKey("test2");
+        String instanceId = instance.getId();
+
+        TaskService taskService = processEngine.getTaskService();
         TaskFlowControlService tfcs = _taskFlowControlServiceFactory.create(instance.getId());
         //到了step2
-        Assert.assertEquals("step2", taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
+        Assert.assertEquals("step2", getTask(taskService, instanceId).getTaskDefinitionKey());
         //在前面加两个节点
         ActivityImpl[] as = tfcs.insertTasksBefore("step2", "bluejoe", "alex");
         //应该执行到了第一个节点
-        Assert.assertEquals(as[0].getId(), taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
-        Assert.assertEquals("bluejoe", taskService.createTaskQuery().singleResult().getAssignee());
+        Assert.assertEquals(as[0].getId(), getTask(taskService, instanceId).getTaskDefinitionKey());
+        Assert.assertEquals("bluejoe", getTask(taskService, instanceId).getAssignee());
         //完成该节点
-        taskService.complete(taskService.createTaskQuery().singleResult().getId());
+        taskService.complete(getTask(taskService, instanceId).getId());
         //应该到了下一个节点
-        Assert.assertEquals(as[1].getId(), taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
-        Assert.assertEquals("alex", taskService.createTaskQuery().singleResult().getAssignee());
+        Assert.assertEquals(as[1].getId(), getTask(taskService, instanceId).getTaskDefinitionKey());
+        Assert.assertEquals("alex", getTask(taskService, instanceId).getAssignee());
         //完成该节点
-        taskService.complete(taskService.createTaskQuery().singleResult().getId());
+        taskService.complete(getTask(taskService, instanceId).getId());
         //应该到了下一个节点
-        Assert.assertEquals("step2", taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
+        Assert.assertEquals("step2", getTask(taskService, instanceId).getTaskDefinitionKey());
         //完成step2
-        taskService.complete(taskService.createTaskQuery().singleResult().getId());
+        taskService.complete(getTask(taskService, instanceId).getId());
         //应该到了step3
-        Assert.assertEquals("step3", taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
+        Assert.assertEquals("step3", getTask(taskService, instanceId).getTaskDefinitionKey());
 
         //确认历史轨迹里已保存
         //step1,step2,step2-1,step2-2,step2,step3
-        List<HistoricActivityInstance> activities = _processEngine.getHistoryService()
+        List<HistoricActivityInstance> activities = processEngine.getHistoryService()
                 .createHistoricActivityInstanceQuery().processInstanceId(instance.getId()).list();
         Assert.assertEquals(6, activities.size());
 
         //删掉流程
-        _processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
+        processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
     }
 
     /**
@@ -167,40 +169,41 @@ public abstract class AbstractProcessEngineTest {
      */
     @Test
     public void testInsertTasksAfter() throws Exception {
-        ProcessInstance instance = _processEngine.getRuntimeService().startProcessInstanceByKey("test2");
-        TaskService taskService = _processEngine.getTaskService();
+        ProcessInstance instance = processEngine.getRuntimeService().startProcessInstanceByKey("test2");
+        String instanceId = instance.getId();
+        TaskService taskService = processEngine.getTaskService();
         TaskFlowControlService tfcs = _taskFlowControlServiceFactory.create(instance.getId());
         //到了step2
-        Assert.assertEquals("step2", taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
+        Assert.assertEquals("step2", getTask(taskService, instanceId).getTaskDefinitionKey());
         //在前面加两个节点
         Authentication.setAuthenticatedUserId("kermit");
         ActivityImpl[] as = tfcs.insertTasksAfter("step2", "bluejoe", "alex");
         //应该执行到了第一个节点
-        Assert.assertEquals(as[0].getId(), taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
-        Assert.assertEquals("kermit", taskService.createTaskQuery().singleResult().getAssignee());
+        Assert.assertEquals(as[0].getId(), getTask(taskService, instanceId).getTaskDefinitionKey());
+        Assert.assertEquals("kermit", getTask(taskService, instanceId).getAssignee());
         //完成该节点
-        taskService.complete(taskService.createTaskQuery().singleResult().getId());
+        taskService.complete(getTask(taskService, instanceId).getId());
         //应该到了下一个节点
-        Assert.assertEquals(as[1].getId(), taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
-        Assert.assertEquals("bluejoe", taskService.createTaskQuery().singleResult().getAssignee());
+        Assert.assertEquals(as[1].getId(), getTask(taskService, instanceId).getTaskDefinitionKey());
+        Assert.assertEquals("bluejoe", getTask(taskService, instanceId).getAssignee());
         //完成该节点
-        taskService.complete(taskService.createTaskQuery().singleResult().getId());
+        taskService.complete(getTask(taskService, instanceId).getId());
         //应该到了下一个节点
-        Assert.assertEquals(as[2].getId(), taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
-        Assert.assertEquals("alex", taskService.createTaskQuery().singleResult().getAssignee());
+        Assert.assertEquals(as[2].getId(), getTask(taskService, instanceId).getTaskDefinitionKey());
+        Assert.assertEquals("alex", getTask(taskService, instanceId).getAssignee());
         //完成该节点
-        taskService.complete(taskService.createTaskQuery().singleResult().getId());
+        taskService.complete(getTask(taskService, instanceId).getId());
         //应该到了下一个节点
-        Assert.assertEquals("step3", taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
+        Assert.assertEquals("step3", getTask(taskService, instanceId).getTaskDefinitionKey());
 
         //确认历史轨迹里已保存
         //step1,step2,step2,step2-1,step2-2,step3
-        List<HistoricActivityInstance> activities = _processEngine.getHistoryService()
+        List<HistoricActivityInstance> activities = processEngine.getHistoryService()
                 .createHistoricActivityInstanceQuery().processInstanceId(instance.getId()).list();
         Assert.assertEquals(6, activities.size());
 
         //删掉流程
-        _processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
+        processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
     }
 
     /**
@@ -208,9 +211,9 @@ public abstract class AbstractProcessEngineTest {
      */
     @Test
     public void testInsertTasksWithPersistence() throws Exception {
-        ProcessInstance instance = _processEngine.getRuntimeService().startProcessInstanceByKey("test2");
-        String processInstanceId = instance.getId();
-        TaskService taskService = _processEngine.getTaskService();
+        ProcessInstance instance = processEngine.getRuntimeService().startProcessInstanceByKey("test2");
+        String instanceId = instance.getId();
+        TaskService taskService = processEngine.getTaskService();
         TaskFlowControlService tfcs = _taskFlowControlServiceFactory.create(instance.getId());
         //到了step2
         //在前面加两个节点
@@ -218,41 +221,41 @@ public abstract class AbstractProcessEngineTest {
         ActivityImpl[] as = tfcs.insertTasksAfter("step2", "bluejoe", "alex");
         //应该执行到了第一个节点
         //完成该节点
-        taskService.complete(taskService.createTaskQuery().singleResult().getId());
+        taskService.complete(getTask(taskService, instanceId).getId());
         //应该到了下一个节点
-        Assert.assertEquals("bluejoe", taskService.createTaskQuery().singleResult().getAssignee());
+        Assert.assertEquals("bluejoe", getTask(taskService, instanceId).getAssignee());
 
         //此时模拟服务器重启
-        ProcessEngine oldProcessEngine = _processEngine;
+        ProcessEngine oldProcessEngine = processEngine;
         rebuildApplicationContext();
-        Assert.assertNotSame(oldProcessEngine, _processEngine);
+        Assert.assertNotSame(oldProcessEngine, processEngine);
 
         //重新构造以上对象
-        instance = _processEngine.getRuntimeService().createProcessInstanceQuery().processInstanceId(processInstanceId)
+        instance = processEngine.getRuntimeService().createProcessInstanceQuery().processInstanceId(instanceId)
                 .singleResult();
-        taskService = _processEngine.getTaskService();
+        taskService = processEngine.getTaskService();
         tfcs = _taskFlowControlServiceFactory.create(instance.getId());
 
         //应该到了下一个节点
-        Assert.assertEquals("bluejoe", taskService.createTaskQuery().singleResult().getAssignee());
+        Assert.assertEquals("bluejoe", getTask(taskService, instanceId).getAssignee());
         //完成该节点
-        taskService.complete(taskService.createTaskQuery().singleResult().getId());
+        taskService.complete(getTask(taskService, instanceId).getId());
         //应该到了下一个节点
-        Assert.assertEquals(as[2].getId(), taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
-        Assert.assertEquals("alex", taskService.createTaskQuery().singleResult().getAssignee());
+        Assert.assertEquals(as[2].getId(), getTask(taskService, instanceId).getTaskDefinitionKey());
+        Assert.assertEquals("alex", getTask(taskService, instanceId).getAssignee());
         //完成该节点
-        taskService.complete(taskService.createTaskQuery().singleResult().getId());
+        taskService.complete(getTask(taskService, instanceId).getId());
         //应该到了下一个节点
-        Assert.assertEquals("step3", taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
+        Assert.assertEquals("step3", getTask(taskService, instanceId).getTaskDefinitionKey());
 
         //确认历史轨迹里已保存
         //step1,step2,step2,step2-1,step2-2,step3
-        List<HistoricActivityInstance> activities = _processEngine.getHistoryService()
+        List<HistoricActivityInstance> activities = processEngine.getHistoryService()
                 .createHistoricActivityInstanceQuery().processInstanceId(instance.getId()).list();
         Assert.assertEquals(6, activities.size());
 
         //删掉流程
-        _processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
+        processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
     }
 
     /**
@@ -260,26 +263,26 @@ public abstract class AbstractProcessEngineTest {
      */
     @Test
     public void testSplit() throws Exception {
-        String processDefId = _processEngine.getRepositoryService().createProcessDefinitionQuery()
+        String processDefId = processEngine.getRepositoryService().createProcessDefinitionQuery()
                 .processDefinitionKey("test2").singleResult().getId();
-        int size = ProcessDefinitionUtils.getProcessDefinition(_processEngine, processDefId).getActivities().size();
+        int size = ProcessDefinitionUtils.getProcessDefinition(processEngine, processDefId).getActivities().size();
 
         //重复执行，以确定当前流程的修改不会影响其他流程
         for (int i = 0; i < 2; i++) {
-            ProcessInstance instance = _processEngine.getRuntimeService().startProcessInstanceByKey("test2");
+            ProcessInstance instance = processEngine.getRuntimeService().startProcessInstanceByKey("test2");
             TaskFlowControlService tfcs = _taskFlowControlServiceFactory.create(instance.getId());
-            TaskService taskService = _processEngine.getTaskService();
+            TaskService taskService = processEngine.getTaskService();
             //应该有1个step2任务在执行
             Assert.assertEquals(1, taskService.createTaskQuery().taskDefinitionKey("step2").count());
 
             //有1个execution
-            Assert.assertEquals(1, _processEngine.getRuntimeService().createExecutionQuery().count());
+            Assert.assertEquals(1, processEngine.getRuntimeService().createExecutionQuery().count());
             //step2分裂成2个
             ActivityImpl newActivity = tfcs.split("step2", "bluejoe", "alex");
 
             //只有1个step2任务
             Assert.assertEquals(1, taskService.createTaskQuery().taskDefinitionKey("step2").count());
-            Assert.assertEquals(2, _processEngine.getRuntimeService().createExecutionQuery().count());
+            Assert.assertEquals(2, processEngine.getRuntimeService().createExecutionQuery().count());
 
             //依次完成2个任务
             taskService.complete(taskService.createTaskQuery().list().get(0).getId());
@@ -288,22 +291,22 @@ public abstract class AbstractProcessEngineTest {
             Assert.assertEquals(0, taskService.createTaskQuery().taskDefinitionKey("step2").count());
             //应该顺利到达step3
             Assert.assertEquals("step3", taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
-            Assert.assertEquals(1, _processEngine.getRuntimeService().createExecutionQuery().count());
+            Assert.assertEquals(1, processEngine.getRuntimeService().createExecutionQuery().count());
 
-            Assert.assertNotNull(ProcessDefinitionUtils.getProcessDefinition(_processEngine, processDefId)
+            Assert.assertNotNull(ProcessDefinitionUtils.getProcessDefinition(processEngine, processDefId)
                     .findActivity(newActivity.getId()));
 
             //确认历史轨迹里已保存
             //step1,step2,step2-split,step2-split,step3
-            List<HistoricActivityInstance> activities = _processEngine.getHistoryService()
+            List<HistoricActivityInstance> activities = processEngine.getHistoryService()
                     .createHistoricActivityInstanceQuery().processInstanceId(instance.getId()).list();
             Assert.assertEquals(5, activities.size());
 
             //删掉流程
-            _processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
+            processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
         }
 
-        Assert.assertEquals(size + 2, ProcessDefinitionUtils.getProcessDefinition(_processEngine, processDefId)
+        Assert.assertEquals(size + 2, ProcessDefinitionUtils.getProcessDefinition(processEngine, processDefId)
                 .getActivities().size());
     }
 
@@ -313,17 +316,15 @@ public abstract class AbstractProcessEngineTest {
     @Test
     public void testCachedDefinitions() {
         //获取TaskDefinition
-        String processDefId = _processEngine.getRepositoryService().createProcessDefinitionQuery()
+        String processDefId = processEngine.getRepositoryService().createProcessDefinitionQuery()
                 .processDefinitionKey("test1").singleResult().getId();
 
-        ActivityImpl activity1 = ProcessDefinitionUtils.getActivity(_processEngine, processDefId, "step2");
-        ActivityImpl activity2 = ProcessDefinitionUtils.getActivity(_processEngine, processDefId, "step2");
+        ActivityImpl activity1 = ProcessDefinitionUtils.getActivity(processEngine, processDefId, "step2");
+        ActivityImpl activity2 = ProcessDefinitionUtils.getActivity(processEngine, processDefId, "step2");
         Assert.assertSame(activity1, activity2);
 
-        ExecutionEntity instance1 = (ExecutionEntity) _processEngine.getRuntimeService().startProcessInstanceByKey(
-                "test2");
-        ExecutionEntity instance2 = (ExecutionEntity) _processEngine.getRuntimeService().startProcessInstanceByKey(
-                "test2");
+        ExecutionEntity instance1 = (ExecutionEntity) processEngine.getRuntimeService().startProcessInstanceByKey("test2");
+        ExecutionEntity instance2 = (ExecutionEntity) processEngine.getRuntimeService().startProcessInstanceByKey("test2");
 
         Assert.assertSame(instance1.getProcessDefinition(), instance2.getProcessDefinition());
         Assert.assertSame(((ProcessDefinitionEntity) instance1.getProcessDefinition()).getTaskDefinitions(),
@@ -341,8 +342,8 @@ public abstract class AbstractProcessEngineTest {
                 .containsKey("step6"));
 
         //删除流程
-        _processEngine.getRuntimeService().deleteProcessInstance(instance1.getId(), "test");
-        _processEngine.getRuntimeService().deleteProcessInstance(instance2.getId(), "test");
+        processEngine.getRuntimeService().deleteProcessInstance(instance1.getId(), "test");
+        processEngine.getRuntimeService().deleteProcessInstance(instance2.getId(), "test");
     }
 
     /**
@@ -352,9 +353,9 @@ public abstract class AbstractProcessEngineTest {
     public void testMultiInstancesLoop() {
         Map<String, Object> variables = new HashMap<String, Object>();
         variables.put("assigneeList", CollectionUtils.arrayToList(new String[]{"kermit", "bluejoe"}));
-        ProcessInstance instance = _processEngine.getRuntimeService().startProcessInstanceByKey("test2", variables);
+        ProcessInstance instance = processEngine.getRuntimeService().startProcessInstanceByKey("test2", variables);
 
-        TaskService taskService = _processEngine.getTaskService();
+        TaskService taskService = processEngine.getTaskService();
 
         //完成step2
         taskService.complete(taskService.createTaskQuery().singleResult().getId());
@@ -362,15 +363,15 @@ public abstract class AbstractProcessEngineTest {
         //应该有1个step3任务在执行
         Assert.assertEquals(1, taskService.createTaskQuery().taskDefinitionKey("step3").count());
         //有1个execution
-        Assert.assertEquals(1, _processEngine.getRuntimeService().createExecutionQuery().count());
-        Assert.assertEquals("step3", _processEngine.getRuntimeService().createExecutionQuery().singleResult()
+        Assert.assertEquals(1, processEngine.getRuntimeService().createExecutionQuery().count());
+        Assert.assertEquals("step3", processEngine.getRuntimeService().createExecutionQuery().singleResult()
                 .getActivityId());
 
         //完成step3，抵达step4
         taskService.complete(taskService.createTaskQuery().singleResult().getId());
         //step4是个并行多实例节点
         //应该启动了3个step4，1个二级执行，2个三级执行，加上前面的主执行，共4个
-        List<Execution> list = _processEngine.getRuntimeService().createExecutionQuery().list();
+        List<Execution> list = processEngine.getRuntimeService().createExecutionQuery().list();
         Assert.assertEquals(4, list.size());
 
         ExecutionEntity execution1 = (ExecutionEntity) list.get(0);
@@ -409,7 +410,7 @@ public abstract class AbstractProcessEngineTest {
                 .getId());
 
         //execution还是4个
-        Assert.assertEquals(4, _processEngine.getRuntimeService().createExecutionQuery().count());
+        Assert.assertEquals(4, processEngine.getRuntimeService().createExecutionQuery().count());
         //完成task42
         taskService.complete(task42.getId());
         //没有step4的任何任务了
@@ -417,18 +418,18 @@ public abstract class AbstractProcessEngineTest {
         Assert.assertEquals(1, taskService.createTaskQuery().taskDefinitionKey("step5").count());
 
         //execution又恢复成1个
-        Assert.assertEquals(1, _processEngine.getRuntimeService().createExecutionQuery().count());
-        Assert.assertEquals("step5", _processEngine.getRuntimeService().createExecutionQuery().singleResult()
+        Assert.assertEquals(1, processEngine.getRuntimeService().createExecutionQuery().count());
+        Assert.assertEquals("step5", processEngine.getRuntimeService().createExecutionQuery().singleResult()
                 .getActivityId());
 
         //完成step5，抵达step6
         taskService.complete(taskService.createTaskQuery().singleResult().getId());
         //step6是一个串行多实例节点
         //此时应该有2个execution
-        Assert.assertEquals(2, _processEngine.getRuntimeService().createExecutionQuery().count());
+        Assert.assertEquals(2, processEngine.getRuntimeService().createExecutionQuery().count());
         Assert.assertEquals(1, taskService.createTaskQuery().taskDefinitionKey("step6").count());
         Assert.assertEquals(taskService.createTaskQuery().taskDefinitionKey("step6").singleResult().getExecutionId(),
-                _processEngine.getRuntimeService().createExecutionQuery().list().get(1).getId());
+                processEngine.getRuntimeService().createExecutionQuery().list().get(1).getId());
         //执行step6-1
         taskService.complete(taskService.createTaskQuery().singleResult().getId());
         //还剩下1个
@@ -439,7 +440,7 @@ public abstract class AbstractProcessEngineTest {
         Assert.assertEquals(1, taskService.createTaskQuery().taskDefinitionKey("step7").count());
 
         //删掉流程
-        _processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
+        processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
     }
 
     /**
@@ -448,7 +449,7 @@ public abstract class AbstractProcessEngineTest {
     @Test
     public void testModelDeployment() throws Exception {
         // 取model，该model会自动注册
-        RepositoryService repositoryService = _processEngine.getRepositoryService();
+        RepositoryService repositoryService = processEngine.getRepositoryService();
         Model model = repositoryService.createModelQuery().modelKey("vacation.bpmn").singleResult();
         //确定已注册
         Assert.assertNotNull(model);
@@ -474,34 +475,34 @@ public abstract class AbstractProcessEngineTest {
      */
     @Test
     public void testMove() throws Exception {
-        ProcessInstance instance = _processEngine.getRuntimeService().startProcessInstanceByKey("test2");
+        ProcessInstance instance = processEngine.getRuntimeService().startProcessInstanceByKey("test2");
         String instanceId = instance.getId();
 
-        TaskService taskService = _processEngine.getTaskService();
-        Assert.assertEquals("step2", taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
+        TaskService taskService = processEngine.getTaskService();
+        Assert.assertEquals("step2", getTask(taskService, instanceId).getTaskDefinitionKey());
 
-        taskService.complete(taskService.createTaskQuery().singleResult().getId());
-        Assert.assertEquals("step3", taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
+        taskService.complete(taskService.createTaskQuery().processInstanceId(instanceId).singleResult().getId());
+        Assert.assertEquals("step3", getTask(taskService, instanceId).getTaskDefinitionKey());
 
         TaskFlowControlService tfcs = _taskFlowControlServiceFactory.create(instance.getId());
         //测试一下往前跳
         tfcs.moveTo("step5");
-        Assert.assertEquals("step5", taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
+        Assert.assertEquals("step5", getTask(taskService, instanceId).getTaskDefinitionKey());
 
         //跳回至 step2
         tfcs.moveTo("step2");
-        Assert.assertEquals("step2", taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
+        Assert.assertEquals("step2", getTask(taskService, instanceId).getTaskDefinitionKey());
 
         //前进一步
         tfcs.moveForward();
-        Assert.assertEquals("step3", taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
+        Assert.assertEquals("step3", getTask(taskService, instanceId).getTaskDefinitionKey());
 
         //后退一步
         tfcs.moveBack();
-        Assert.assertEquals("step2", taskService.createTaskQuery().singleResult().getTaskDefinitionKey());
+        Assert.assertEquals("step2", getTask(taskService, instanceId).getTaskDefinitionKey());
 
         //确认历史轨迹里已保存
-        List<HistoricActivityInstance> activities = _processEngine.getHistoryService()
+        List<HistoricActivityInstance> activities = processEngine.getHistoryService()
                 .createHistoricActivityInstanceQuery().processInstanceId(instanceId).list();
 
         Assert.assertEquals(7, activities.size());
@@ -513,7 +514,18 @@ public abstract class AbstractProcessEngineTest {
         Assert.assertEquals("step3", activities.get(5).getActivityId());
         Assert.assertEquals("step2", activities.get(6).getActivityId());
 
-        _processEngine.getRuntimeService().deleteProcessInstance(instanceId, "test");
+        processEngine.getRuntimeService().deleteProcessInstance(instanceId, "test");
+    }
+
+    /**
+     * 封装流程实例的当前方法
+     *
+     * @param taskService
+     * @param instanceId
+     * @return
+     */
+    private Task getTask(TaskService taskService, String instanceId) {
+        return taskService.createTaskQuery().processInstanceId(instanceId).singleResult();
     }
 
     /**
@@ -521,13 +533,13 @@ public abstract class AbstractProcessEngineTest {
      */
     @Test
     public void testActivityPermission() throws Exception {
-        String processDefId = _processEngine.getRepositoryService().createProcessDefinitionQuery()
+        String processDefId = processEngine.getRepositoryService().createProcessDefinitionQuery()
                 .processDefinitionKey("test1").singleResult().getId();
         // 启动流程实例
-        ProcessInstance instance = _processEngine.getRuntimeService().startProcessInstanceByKey("test1");
+        ProcessInstance instance = processEngine.getRuntimeService().startProcessInstanceByKey("test1");
         Assert.assertNotNull(instance);
 
-        TaskService taskService = _processEngine.getTaskService();
+        TaskService taskService = processEngine.getTaskService();
         //会自动跳转到第一个task
         //management可以访问该task
         Assert.assertEquals(1, taskService.createTaskQuery().taskCandidateGroup("management").count());
@@ -545,17 +557,17 @@ public abstract class AbstractProcessEngineTest {
         Assert.assertEquals(0, taskService.createTaskQuery().taskCandidateGroup("engineering").count());
 
         //删除掉该流程
-        _processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
+        processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
 
         //再启动一个流程
-        instance = _processEngine.getRuntimeService().startProcessInstanceByKey("test1");
+        instance = processEngine.getRuntimeService().startProcessInstanceByKey("test1");
         //engineering应该可以执行任务了
         Assert.assertEquals(1, taskService.createTaskQuery().taskCandidateGroup("engineering").count());
         //management不可以执行任务
         Assert.assertEquals(0, taskService.createTaskQuery().taskCandidateGroup("management").count());
 
         //删掉流程实例
-        _processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
+        processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
         _permissions.removeAll();
 
         //允许step2可以让engineering和management操作，允许neo操作
@@ -563,7 +575,7 @@ public abstract class AbstractProcessEngineTest {
                 new String[]{"neo"});
 
         //再启动一个流程
-        instance = _processEngine.getRuntimeService().startProcessInstanceByKey("test1");
+        instance = processEngine.getRuntimeService().startProcessInstanceByKey("test1");
         //engineering应该可以执行任务
         Assert.assertEquals(1, taskService.createTaskQuery().taskCandidateGroup("engineering").count());
         //management应该可以执行任务
@@ -575,7 +587,7 @@ public abstract class AbstractProcessEngineTest {
         Assert.assertEquals(1, taskService.createTaskQuery().taskCandidateUser("neo").count());
 
         //删掉流程
-        _processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
+        processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
     }
 
     /**
@@ -584,9 +596,9 @@ public abstract class AbstractProcessEngineTest {
     @Test
     public void testDelegation() throws Exception {
         ProcessInstance instance;
-        TaskService taskService = _processEngine.getTaskService();
+        TaskService taskService = processEngine.getTaskService();
 
-        ((TaskDelagationAssignmentHandler) (((ReplaceTaskAssignmentHandler) (((ProcessEngineConfigurationEx) _processEngine
+        ((TaskDelagationAssignmentHandler) (((ReplaceTaskAssignmentHandler) (((ProcessEngineConfigurationEx) processEngine
                 .getProcessEngineConfiguration()).getStartEngineEventListeners().get(2))).getHandlers().get(1)))
                 .setHideDelegated(false);
 
@@ -595,24 +607,24 @@ public abstract class AbstractProcessEngineTest {
         _delegations.saveDelegation("kermit", "alex");
 
         //启动一个流程
-        instance = _processEngine.getRuntimeService().startProcessInstanceByKey("test1");
+        instance = processEngine.getRuntimeService().startProcessInstanceByKey("test1");
         //kermit是management，所以可以访问
         Assert.assertEquals(1, taskService.createTaskQuery().taskCandidateUser("kermit").count());
         Assert.assertEquals(1, taskService.createTaskQuery().taskCandidateUser("alex").count());
-        _processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
+        processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
 
         //设置屏蔽被代理人
-        ((TaskDelagationAssignmentHandler) (((ReplaceTaskAssignmentHandler) (((ProcessEngineConfigurationEx) _processEngine
+        ((TaskDelagationAssignmentHandler) (((ReplaceTaskAssignmentHandler) (((ProcessEngineConfigurationEx) processEngine
                 .getProcessEngineConfiguration()).getStartEngineEventListeners().get(2))).getHandlers().get(1)))
                 .setHideDelegated(true);
 
         //再启动一个流程
-        instance = _processEngine.getRuntimeService().startProcessInstanceByKey("test1");
+        instance = processEngine.getRuntimeService().startProcessInstanceByKey("test1");
         //neo被屏蔽了
         Assert.assertEquals(1, taskService.createTaskQuery().taskCandidateUser("kermit").count());
         Assert.assertEquals(0, taskService.createTaskQuery().taskCandidateUser("neo").count());
         //删掉流程
-        _processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
+        processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
     }
 
     /**
@@ -620,9 +632,9 @@ public abstract class AbstractProcessEngineTest {
      */
     @Test
     public void testAlarm() throws Exception {
-        ProcessInstance instance = _processEngine.getRuntimeService().startProcessInstanceByKey("test1");
-        String taskId = _processEngine.getTaskService().createTaskQuery().singleResult().getId();
-        TaskAlarmServiceImpl taskAlarmService = (TaskAlarmServiceImpl) _ctx.getBean(TaskAlarmServiceImpl.class);
+        ProcessInstance instance = processEngine.getRuntimeService().startProcessInstanceByKey("test1");
+        String taskId = processEngine.getTaskService().createTaskQuery().singleResult().getId();
+        TaskAlarmServiceImpl taskAlarmService = (TaskAlarmServiceImpl) applicationContext.getBean(TaskAlarmServiceImpl.class);
 
         final List<String> userIds = new ArrayList<String>();
         final List<String> taskIds = new ArrayList<String>();
@@ -637,7 +649,7 @@ public abstract class AbstractProcessEngineTest {
             }
         });
 
-        taskAlarmService.start(_processEngine);
+        taskAlarmService.start(processEngine);
         //等待催办事件发生
         Thread.sleep(60000);
         Assert.assertEquals(1, taskIds.size());
@@ -645,7 +657,7 @@ public abstract class AbstractProcessEngineTest {
         Assert.assertEquals(1, userIds.size());
         Assert.assertTrue(userIds.contains("kermit"));
         //删掉流程
-        _processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
+        processEngine.getRuntimeService().deleteProcessInstance(instance.getId(), "test");
     }
 
 }

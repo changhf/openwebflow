@@ -15,6 +15,7 @@ import org.openwebflow.util.ProcessDefinitionUtils;
 import java.util.List;
 
 public class MultiInstanceActivityCreator extends RuntimeActivityCreatorSupport implements RuntimeActivityCreator {
+    @Override
     public ActivityImpl[] createActivities(ProcessEngine processEngine, ProcessDefinitionEntity processDefinition,
                                            RuntimeActivityDefinitionEntity info) {
         info.setFactoryName(MultiInstanceActivityCreator.class.getName());

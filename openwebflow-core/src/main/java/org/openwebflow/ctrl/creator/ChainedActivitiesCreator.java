@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ChainedActivitiesCreator extends RuntimeActivityCreatorSupport implements RuntimeActivityCreator {
+    @Override
     public ActivityImpl[] createActivities(ProcessEngine processEngine, ProcessDefinitionEntity processDefinition,
                                            RuntimeActivityDefinitionEntity info) {
         info.setFactoryName(ChainedActivitiesCreator.class.getName());

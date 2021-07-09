@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class SimpleUserDetailsEntity extends UserDetailsEntitySupport {
-    private Map<String, Object> _map = new HashMap<String, Object>();
+    private Map<String, Object> userDetailMap = new HashMap<>();
 
     public SimpleUserDetailsEntity() {
     }
@@ -16,10 +16,10 @@ public class SimpleUserDetailsEntity extends UserDetailsEntitySupport {
     }
 
     public SimpleUserDetailsEntity(String userId, String nickName, String email, String mobilePhoneNumber) {
-        _map.put(STRING_PROPERTY_USER_ID, userId);
-        _map.put(STRING_PROPERTY_EMAIL, email);
-        _map.put(STRING_PROPERTY_MOBILE_PHONE_NUMBER, mobilePhoneNumber);
-        _map.put(STRING_PROPERTY_NICK_NAME, nickName);
+        userDetailMap.put(STRING_PROPERTY_USER_ID, userId);
+        userDetailMap.put(STRING_PROPERTY_EMAIL, email);
+        userDetailMap.put(STRING_PROPERTY_MOBILE_PHONE_NUMBER, mobilePhoneNumber);
+        userDetailMap.put(STRING_PROPERTY_NICK_NAME, nickName);
     }
 
     public String getEmail() {
@@ -35,12 +35,12 @@ public class SimpleUserDetailsEntity extends UserDetailsEntitySupport {
     }
 
     public <T> T getProperty(String name) {
-        return (T) _map.get(name);
+        return (T) userDetailMap.get(name);
     }
 
     @Override
     public String[] getPropertyNames() {
-        return _map.keySet().toArray(new String[0]);
+        return userDetailMap.keySet().toArray(new String[0]);
     }
 
     public String getUserId() {
@@ -60,7 +60,7 @@ public class SimpleUserDetailsEntity extends UserDetailsEntitySupport {
     }
 
     public <T> void setProperty(String name, T value) {
-        _map.put(name, value);
+        userDetailMap.put(name, value);
     }
 
     public void setUserId(String userId) {
@@ -69,6 +69,6 @@ public class SimpleUserDetailsEntity extends UserDetailsEntitySupport {
 
     @Override
     public String toString() {
-        return _map.toString();
+        return userDetailMap.toString();
     }
 }

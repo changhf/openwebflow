@@ -13,13 +13,13 @@ public class SimpleRuntimeActivityDefinitionEntity implements RuntimeActivityDef
 
     String _processDefinitionId;
 
-    public Map<String, Object> getProperties() {
-        return _properties;
-    }
+    String _processInstanceId;
 
-    public void setProperties(Map<String, Object> properties) {
-        _properties = properties;
-    }
+    Map<String, Object> _properties = new HashMap<>();
+
+    String _propertiesText;
+
+
 
     public void setFactoryName(String factoryName) {
         _factoryName = factoryName;
@@ -37,11 +37,7 @@ public class SimpleRuntimeActivityDefinitionEntity implements RuntimeActivityDef
         _propertiesText = propertiesText;
     }
 
-    String _processInstanceId;
 
-    Map<String, Object> _properties = new HashMap<String, Object>();
-
-    String _propertiesText;
 
     @Override
     public void deserializeProperties() throws IOException {
@@ -83,5 +79,12 @@ public class SimpleRuntimeActivityDefinitionEntity implements RuntimeActivityDef
     @Override
     public <T> void setProperty(String name, T value) {
         _properties.put(name, value);
+    }
+    public Map<String, Object> getProperties() {
+        return _properties;
+    }
+
+    public void setProperties(Map<String, Object> properties) {
+        _properties = properties;
     }
 }

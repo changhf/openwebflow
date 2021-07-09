@@ -21,6 +21,13 @@ public abstract class ProcessDefinitionUtils {
         return (ActivityImpl) pde.findActivity(activityId);
     }
 
+    /**
+     * 查询流程定义
+     *
+     * @param processEngine
+     * @param processDefId
+     * @return
+     */
     public static ProcessDefinitionEntity getProcessDefinition(ProcessEngine processEngine, String processDefId) {
         return (ProcessDefinitionEntity) ((RepositoryServiceImpl) processEngine.getRepositoryService())
                 .getDeployedProcessDefinition(processDefId);
