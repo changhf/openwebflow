@@ -1,8 +1,7 @@
 package org.openwebflow.ctrl;
 
-public interface TaskFlowControlServiceFactory
-{
+public interface TaskFlowControlServiceFactory {
 
-	TaskFlowControlService create(String processId);
+    TaskFlowControlService create(String processId);
 
 }

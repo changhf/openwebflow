@@ -8,29 +8,26 @@ import org.activiti.engine.impl.pvm.runtime.AtomicOperation;
 import org.apache.log4j.Logger;
 import org.openwebflow.ctrl.impl.DefaultTaskFlowControlService;
 
-public class CreateAndTakeTransitionCmd implements Command<java.lang.Void>
-{
-	private ActivityImpl _activity;
+public class CreateAndTakeTransitionCmd implements Command<java.lang.Void> {
+    private ActivityImpl _activity;
 
-	private String _executionId;
+    private String _executionId;
 
-	public CreateAndTakeTransitionCmd(String executionId, ActivityImpl activity)
-	{
-		_executionId = executionId;
-		_activity = activity;
-	}
+    public CreateAndTakeTransitionCmd(String executionId, ActivityImpl activity) {
+        _executionId = executionId;
+        _activity = activity;
+    }
 
-	@Override
-	public Void execute(CommandContext commandContext)
-	{
-		//创建新任务
-		Logger.getLogger(DefaultTaskFlowControlService.class).debug(
-			String.format("executing activity: %s", _activity.getId()));
+    @Override
+    public Void execute(CommandContext commandContext) {
+        //创建新任务
+        Logger.getLogger(DefaultTaskFlowControlService.class).debug(
+                String.format("executing activity: %s", _activity.getId()));
 
-		ExecutionEntity execution = commandContext.getExecutionEntityManager().findExecutionById(_executionId);
-		execution.setActivity(_activity);
-		execution.performOperation(AtomicOperation.TRANSITION_CREATE_SCOPE);
+        ExecutionEntity execution = commandContext.getExecutionEntityManager().findExecutionById(_executionId);
+        execution.setActivity(_activity);
+        execution.performOperation(AtomicOperation.TRANSITION_CREATE_SCOPE);
 
-		return null;
-	}
+        return null;
+    }
 }

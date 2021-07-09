@@ -1,40 +1,33 @@
 package org.openwebflow.mgr.mybatis.entity;
 
-public class SqlMembershipEntity
-{
-	String _groupId;
+public class SqlMembershipEntity {
+    String _groupId;
 
-	int _id;
+    int _id;
 
-	String _userId;
+    String _userId;
 
-	public String getGroupId()
-	{
-		return _groupId;
-	}
+    public String getGroupId() {
+        return _groupId;
+    }
 
-	public int getId()
-	{
-		return _id;
-	}
+    public int getId() {
+        return _id;
+    }
 
-	public String getUserId()
-	{
-		return _userId;
-	}
+    public String getUserId() {
+        return _userId;
+    }
 
-	public void setGroupId(String groupId)
-	{
-		_groupId = groupId;
-	}
+    public void setGroupId(String groupId) {
+        _groupId = groupId;
+    }
 
-	public void setId(int id)
-	{
-		_id = id;
-	}
+    public void setId(int id) {
+        _id = id;
+    }
 
-	public void setUserId(String userId)
-	{
-		_userId = userId;
-	}
+    public void setUserId(String userId) {
+        _userId = userId;
+    }
 }

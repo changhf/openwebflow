@@ -1,47 +1,42 @@
 package org.openwebflow.mgr.mybatis.service;
 
-import java.lang.reflect.ParameterizedType;
-
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.mapper.MapperFactoryBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 
-public abstract class SqlMapperBasedServiceBase<MapperClass> implements InitializingBean
-{
-	protected MapperClass _mapper;
+import java.lang.reflect.ParameterizedType;
 
-	@Autowired
-	SqlSessionFactory _sqlSessionFactory;
+public abstract class SqlMapperBasedServiceBase<MapperClass> implements InitializingBean {
+    protected MapperClass _mapper;
 
-	public void afterPropertiesSet() throws Exception
-	{
-		MapperFactoryBean factory = new MapperFactoryBean();
-		factory.setMapperInterface((Class<MapperClass>) ((ParameterizedType) getClass().getGenericSuperclass())
-				.getActualTypeArguments()[0]);
-		factory.setSqlSessionFactory(_sqlSessionFactory);
-		factory.afterPropertiesSet();
+    @Autowired
+    SqlSessionFactory _sqlSessionFactory;
 
-		_mapper = (MapperClass) factory.getObject();
-	}
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        MapperFactoryBean factory = new MapperFactoryBean();
+        factory.setMapperInterface((Class<MapperClass>) ((ParameterizedType) getClass().getGenericSuperclass())
+                .getActualTypeArguments()[0]);
+        factory.setSqlSessionFactory(_sqlSessionFactory);
+        factory.afterPropertiesSet();
 
-	public MapperClass getMapper()
-	{
-		return _mapper;
-	}
+        _mapper = (MapperClass) factory.getObject();
+    }
 
-	public SqlSessionFactory getSqlSessionFactory()
-	{
-		return _sqlSessionFactory;
-	}
+    public MapperClass getMapper() {
+        return _mapper;
+    }
 
-	public void setMapper(MapperClass mapper)
-	{
-		_mapper = mapper;
-	}
+    public SqlSessionFactory getSqlSessionFactory() {
+        return _sqlSessionFactory;
+    }
 
-	public void setSqlSessionFactory(SqlSessionFactory sqlSessionFactory)
-	{
-		_sqlSessionFactory = sqlSessionFactory;
-	}
+    public void setMapper(MapperClass mapper) {
+        _mapper = mapper;
+    }
+
+    public void setSqlSessionFactory(SqlSessionFactory sqlSessionFactory) {
+        _sqlSessionFactory = sqlSessionFactory;
+    }
 }

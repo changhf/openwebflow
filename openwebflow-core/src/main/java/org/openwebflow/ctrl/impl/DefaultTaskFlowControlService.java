@@ -1,9 +1,5 @@
 package org.openwebflow.ctrl.impl;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.activiti.engine.ProcessEngine;
 import org.activiti.engine.impl.RuntimeServiceImpl;
 import org.activiti.engine.impl.identity.Authentication;
@@ -23,209 +19,191 @@ import org.openwebflow.mgr.common.SimpleRuntimeActivityDefinitionEntity;
 import org.openwebflow.util.ProcessDefinitionUtils;
 import org.springframework.util.CollectionUtils;
 
-public class DefaultTaskFlowControlService implements TaskFlowControlService
-{
-	RuntimeActivityDefinitionManager _activitiesCreationStore;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-	ProcessDefinitionEntity _processDefinition;
+public class DefaultTaskFlowControlService implements TaskFlowControlService {
+    RuntimeActivityDefinitionManager _activitiesCreationStore;
 
-	ProcessEngine _processEngine;
+    ProcessDefinitionEntity _processDefinition;
 
-	private String _processInstanceId;
+    ProcessEngine _processEngine;
 
-	public DefaultTaskFlowControlService(RuntimeActivityDefinitionManager activitiesCreationStore,
-			ProcessEngine processEngine, String processId)
-	{
-		_activitiesCreationStore = activitiesCreationStore;
-		_processEngine = processEngine;
-		_processInstanceId = processId;
+    private String _processInstanceId;
 
-		String processDefId = _processEngine.getRuntimeService().createProcessInstanceQuery()
-				.processInstanceId(_processInstanceId).singleResult().getProcessDefinitionId();
+    public DefaultTaskFlowControlService(RuntimeActivityDefinitionManager activitiesCreationStore,
+                                         ProcessEngine processEngine, String processId) {
+        _activitiesCreationStore = activitiesCreationStore;
+        _processEngine = processEngine;
+        _processInstanceId = processId;
 
-		_processDefinition = ProcessDefinitionUtils.getProcessDefinition(_processEngine, processDefId);
-	}
+        String processDefId = _processEngine.getRuntimeService().createProcessInstanceQuery()
+                .processInstanceId(_processInstanceId).singleResult().getProcessDefinitionId();
 
-	private ActivityImpl[] cloneAndMakeChain(String prototypeActivityId, String nextActivityId, String... assignees)
-			throws Exception
-	{
-		SimpleRuntimeActivityDefinitionEntity info = new SimpleRuntimeActivityDefinitionEntity();
-		info.setProcessDefinitionId(_processDefinition.getId());
-		info.setProcessInstanceId(_processInstanceId);
+        _processDefinition = ProcessDefinitionUtils.getProcessDefinition(_processEngine, processDefId);
+    }
 
-		RuntimeActivityDefinitionEntityIntepreter radei = new RuntimeActivityDefinitionEntityIntepreter(info);
-		radei.setPrototypeActivityId(prototypeActivityId);
-		radei.setAssignees(CollectionUtils.arrayToList(assignees));
-		radei.setNextActivityId(nextActivityId);
+    private ActivityImpl[] cloneAndMakeChain(String prototypeActivityId, String nextActivityId, String... assignees)
+            throws Exception {
+        SimpleRuntimeActivityDefinitionEntity info = new SimpleRuntimeActivityDefinitionEntity();
+        info.setProcessDefinitionId(_processDefinition.getId());
+        info.setProcessInstanceId(_processInstanceId);
 
-		ActivityImpl[] activities = new ChainedActivitiesCreator().createActivities(_processEngine, _processDefinition,
-			info);
+        RuntimeActivityDefinitionEntityIntepreter radei = new RuntimeActivityDefinitionEntityIntepreter(info);
+        radei.setPrototypeActivityId(prototypeActivityId);
+        radei.setAssignees(CollectionUtils.arrayToList(assignees));
+        radei.setNextActivityId(nextActivityId);
 
-		moveTo(activities[0].getId());
-		recordActivitiesCreation(info);
+        ActivityImpl[] activities = new ChainedActivitiesCreator().createActivities(_processEngine, _processDefinition,
+                info);
 
-		return activities;
-	}
+        moveTo(activities[0].getId());
+        recordActivitiesCreation(info);
 
-	private void executeCommand(Command<java.lang.Void> command)
-	{
-		((RuntimeServiceImpl) _processEngine.getRuntimeService()).getCommandExecutor().execute(command);
-	}
+        return activities;
+    }
 
-	private TaskEntity getCurrentTask()
-	{
-		return (TaskEntity) _processEngine.getTaskService().createTaskQuery().processInstanceId(_processInstanceId)
-				.active().singleResult();
-	}
+    private void executeCommand(Command<java.lang.Void> command) {
+        ((RuntimeServiceImpl) _processEngine.getRuntimeService()).getCommandExecutor().execute(command);
+    }
 
-	private TaskEntity getTaskById(String taskId)
-	{
-		return (TaskEntity) _processEngine.getTaskService().createTaskQuery().taskId(taskId).singleResult();
-	}
+    private TaskEntity getCurrentTask() {
+        return (TaskEntity) _processEngine.getTaskService().createTaskQuery().processInstanceId(_processInstanceId)
+                .active().singleResult();
+    }
 
-	/**
-	 * 后加签
-	 */
-	@Override
-	public ActivityImpl[] insertTasksAfter(String targetTaskDefinitionKey, String... assignees) throws Exception
-	{
-		List<String> assigneeList = new ArrayList<String>();
-		assigneeList.add(Authentication.getAuthenticatedUserId());
-		assigneeList.addAll(CollectionUtils.arrayToList(assignees));
-		String[] newAssignees = assigneeList.toArray(new String[0]);
+    private TaskEntity getTaskById(String taskId) {
+        return (TaskEntity) _processEngine.getTaskService().createTaskQuery().taskId(taskId).singleResult();
+    }
 
-		ActivityImpl prototypeActivity = ProcessDefinitionUtils.getActivity(_processEngine, _processDefinition.getId(),
-			targetTaskDefinitionKey);
+    /**
+     * 后加签
+     */
+    @Override
+    public ActivityImpl[] insertTasksAfter(String targetTaskDefinitionKey, String... assignees) throws Exception {
+        List<String> assigneeList = new ArrayList<String>();
+        assigneeList.add(Authentication.getAuthenticatedUserId());
+        assigneeList.addAll(CollectionUtils.arrayToList(assignees));
+        String[] newAssignees = assigneeList.toArray(new String[0]);
 
-		return cloneAndMakeChain(targetTaskDefinitionKey, prototypeActivity.getOutgoingTransitions().get(0)
-				.getDestination().getId(), newAssignees);
-	}
+        ActivityImpl prototypeActivity = ProcessDefinitionUtils.getActivity(_processEngine, _processDefinition.getId(),
+                targetTaskDefinitionKey);
 
-	/**
-	 * 前加签
-	 */
-	@Override
-	public ActivityImpl[] insertTasksBefore(String targetTaskDefinitionKey, String... assignees) throws Exception
-	{
-		return cloneAndMakeChain(targetTaskDefinitionKey, targetTaskDefinitionKey, assignees);
-	}
+        return cloneAndMakeChain(targetTaskDefinitionKey, prototypeActivity.getOutgoingTransitions().get(0)
+                .getDestination().getId(), newAssignees);
+    }
 
-	@Override
-	public void moveBack() throws Exception
-	{
-		moveBack(getCurrentTask());
-	}
+    /**
+     * 前加签
+     */
+    @Override
+    public ActivityImpl[] insertTasksBefore(String targetTaskDefinitionKey, String... assignees) throws Exception {
+        return cloneAndMakeChain(targetTaskDefinitionKey, targetTaskDefinitionKey, assignees);
+    }
 
-	@Override
-	public void moveBack(TaskEntity currentTaskEntity) throws Exception
-	{
-		ActivityImpl activity = (ActivityImpl) ProcessDefinitionUtils
-				.getActivity(_processEngine, currentTaskEntity.getProcessDefinitionId(),
-					currentTaskEntity.getTaskDefinitionKey()).getIncomingTransitions().get(0).getSource();
+    @Override
+    public void moveBack() throws Exception {
+        moveBack(getCurrentTask());
+    }
 
-		moveTo(currentTaskEntity, activity);
-	}
+    @Override
+    public void moveBack(TaskEntity currentTaskEntity) throws Exception {
+        ActivityImpl activity = (ActivityImpl) ProcessDefinitionUtils
+                .getActivity(_processEngine, currentTaskEntity.getProcessDefinitionId(),
+                        currentTaskEntity.getTaskDefinitionKey()).getIncomingTransitions().get(0).getSource();
 
-	@Override
-	public void moveForward() throws Exception
-	{
-		moveForward(getCurrentTask());
-	}
+        moveTo(currentTaskEntity, activity);
+    }
 
-	@Override
-	public void moveForward(TaskEntity currentTaskEntity) throws Exception
-	{
-		ActivityImpl activity = (ActivityImpl) ProcessDefinitionUtils
-				.getActivity(_processEngine, currentTaskEntity.getProcessDefinitionId(),
-					currentTaskEntity.getTaskDefinitionKey()).getOutgoingTransitions().get(0).getDestination();
+    @Override
+    public void moveForward() throws Exception {
+        moveForward(getCurrentTask());
+    }
 
-		moveTo(currentTaskEntity, activity);
-	}
+    @Override
+    public void moveForward(TaskEntity currentTaskEntity) throws Exception {
+        ActivityImpl activity = (ActivityImpl) ProcessDefinitionUtils
+                .getActivity(_processEngine, currentTaskEntity.getProcessDefinitionId(),
+                        currentTaskEntity.getTaskDefinitionKey()).getOutgoingTransitions().get(0).getDestination();
 
-	/**
-	 * 跳转（包括回退和向前）至指定活动节点
-	 * 
-	 * @param targetTaskDefinitionKey
-	 * @throws Exception
-	 */
-	@Override
-	public void moveTo(String targetTaskDefinitionKey) throws Exception
-	{
-		moveTo(getCurrentTask(), targetTaskDefinitionKey);
-	}
+        moveTo(currentTaskEntity, activity);
+    }
 
-	@Override
-	public void moveTo(String currentTaskId, String targetTaskDefinitionKey) throws Exception
-	{
-		moveTo(getTaskById(currentTaskId), targetTaskDefinitionKey);
-	}
+    /**
+     * 跳转（包括回退和向前）至指定活动节点
+     *
+     * @param targetTaskDefinitionKey
+     * @throws Exception
+     */
+    @Override
+    public void moveTo(String targetTaskDefinitionKey) throws Exception {
+        moveTo(getCurrentTask(), targetTaskDefinitionKey);
+    }
 
-	private void moveTo(TaskEntity currentTaskEntity, ActivityImpl activity)
-	{
-		executeCommand(new StartActivityCmd(currentTaskEntity.getExecutionId(), activity));
-		executeCommand(new DeleteRunningTaskCmd(currentTaskEntity));
-	}
+    @Override
+    public void moveTo(String currentTaskId, String targetTaskDefinitionKey) throws Exception {
+        moveTo(getTaskById(currentTaskId), targetTaskDefinitionKey);
+    }
 
-	/**
-	 * 
-	 * @param currentTaskEntity
-	 *            当前任务节点
-	 * @param targetTaskDefinitionKey
-	 *            目标任务节点（在模型定义里面的节点名称）
-	 * @throws Exception
-	 */
-	@Override
-	public void moveTo(TaskEntity currentTaskEntity, String targetTaskDefinitionKey) throws Exception
-	{
-		ActivityImpl activity = ProcessDefinitionUtils.getActivity(_processEngine,
-			currentTaskEntity.getProcessDefinitionId(), targetTaskDefinitionKey);
+    private void moveTo(TaskEntity currentTaskEntity, ActivityImpl activity) {
+        executeCommand(new StartActivityCmd(currentTaskEntity.getExecutionId(), activity));
+        executeCommand(new DeleteRunningTaskCmd(currentTaskEntity));
+    }
 
-		moveTo(currentTaskEntity, activity);
-	}
+    /**
+     * @param currentTaskEntity       当前任务节点
+     * @param targetTaskDefinitionKey 目标任务节点（在模型定义里面的节点名称）
+     * @throws Exception
+     */
+    @Override
+    public void moveTo(TaskEntity currentTaskEntity, String targetTaskDefinitionKey) throws Exception {
+        ActivityImpl activity = ProcessDefinitionUtils.getActivity(_processEngine,
+                currentTaskEntity.getProcessDefinitionId(), targetTaskDefinitionKey);
 
-	private void recordActivitiesCreation(SimpleRuntimeActivityDefinitionEntity info) throws Exception
-	{
-		info.serializeProperties();
-		_activitiesCreationStore.save(info);
-	}
+        moveTo(currentTaskEntity, activity);
+    }
 
-	/**
-	 * 分裂某节点为多实例节点
-	 * 
-	 * @param targetTaskDefinitionKey
-	 * @param assignee
-	 * @throws IOException
-	 * @throws IllegalAccessException
-	 * @throws IllegalArgumentException
-	 */
-	@Override
-	public ActivityImpl split(String targetTaskDefinitionKey, boolean isSequential, String... assignees)
-			throws Exception
-	{
-		SimpleRuntimeActivityDefinitionEntity info = new SimpleRuntimeActivityDefinitionEntity();
-		info.setProcessDefinitionId(_processDefinition.getId());
-		info.setProcessInstanceId(_processInstanceId);
+    private void recordActivitiesCreation(SimpleRuntimeActivityDefinitionEntity info) throws Exception {
+        info.serializeProperties();
+        _activitiesCreationStore.save(info);
+    }
 
-		RuntimeActivityDefinitionEntityIntepreter radei = new RuntimeActivityDefinitionEntityIntepreter(info);
+    /**
+     * 分裂某节点为多实例节点
+     *
+     * @param targetTaskDefinitionKey
+     * @param assignee
+     * @throws IOException
+     * @throws IllegalAccessException
+     * @throws IllegalArgumentException
+     */
+    @Override
+    public ActivityImpl split(String targetTaskDefinitionKey, boolean isSequential, String... assignees)
+            throws Exception {
+        SimpleRuntimeActivityDefinitionEntity info = new SimpleRuntimeActivityDefinitionEntity();
+        info.setProcessDefinitionId(_processDefinition.getId());
+        info.setProcessInstanceId(_processInstanceId);
 
-		radei.setPrototypeActivityId(targetTaskDefinitionKey);
-		radei.setAssignees(CollectionUtils.arrayToList(assignees));
-		radei.setSequential(isSequential);
+        RuntimeActivityDefinitionEntityIntepreter radei = new RuntimeActivityDefinitionEntityIntepreter(info);
 
-		ActivityImpl clone = new MultiInstanceActivityCreator().createActivities(_processEngine, _processDefinition,
-			info)[0];
+        radei.setPrototypeActivityId(targetTaskDefinitionKey);
+        radei.setAssignees(CollectionUtils.arrayToList(assignees));
+        radei.setSequential(isSequential);
 
-		TaskEntity currentTaskEntity = getCurrentTask();
-		executeCommand(new CreateAndTakeTransitionCmd(currentTaskEntity.getExecutionId(), clone));
-		executeCommand(new DeleteRunningTaskCmd(currentTaskEntity));
+        ActivityImpl clone = new MultiInstanceActivityCreator().createActivities(_processEngine, _processDefinition,
+                info)[0];
 
-		recordActivitiesCreation(info);
-		return clone;
-	}
+        TaskEntity currentTaskEntity = getCurrentTask();
+        executeCommand(new CreateAndTakeTransitionCmd(currentTaskEntity.getExecutionId(), clone));
+        executeCommand(new DeleteRunningTaskCmd(currentTaskEntity));
 
-	@Override
-	public ActivityImpl split(String targetTaskDefinitionKey, String... assignee) throws Exception
-	{
-		return split(targetTaskDefinitionKey, true, assignee);
-	}
+        recordActivitiesCreation(info);
+        return clone;
+    }
+
+    @Override
+    public ActivityImpl split(String targetTaskDefinitionKey, String... assignee) throws Exception {
+        return split(targetTaskDefinitionKey, true, assignee);
+    }
 }

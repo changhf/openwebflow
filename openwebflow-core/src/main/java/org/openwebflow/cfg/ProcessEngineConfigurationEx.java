@@ -1,47 +1,38 @@
 package org.openwebflow.cfg;
 
-import java.util.List;
-
 import org.activiti.engine.ProcessEngine;
 import org.activiti.spring.SpringProcessEngineConfiguration;
 
-public class ProcessEngineConfigurationEx extends SpringProcessEngineConfiguration
-{
-	List<StartEngineEventListener> _startEngineEventListeners;
+import java.util.List;
 
-	@Override
-	public ProcessEngine buildProcessEngine()
-	{
-		try
-		{
-			for (StartEngineEventListener listener : _startEngineEventListeners)
-			{
-				listener.beforeStartEngine(this);
-			}
+public class ProcessEngineConfigurationEx extends SpringProcessEngineConfiguration {
+    List<StartEngineEventListener> _startEngineEventListeners;
 
-			ProcessEngine processEngine = super.buildProcessEngine();
+    @Override
+    public ProcessEngine buildProcessEngine() {
+        try {
+            for (StartEngineEventListener listener : _startEngineEventListeners) {
+                listener.beforeStartEngine(this);
+            }
 
-			for (StartEngineEventListener listener : _startEngineEventListeners)
-			{
-				listener.afterStartEngine(this, processEngine);
-			}
+            ProcessEngine processEngine = super.buildProcessEngine();
 
-			return processEngine;
-		}
-		catch (Exception e)
-		{
-			throw new RuntimeException(e);
-		}
-	}
+            for (StartEngineEventListener listener : _startEngineEventListeners) {
+                listener.afterStartEngine(this, processEngine);
+            }
 
-	public List<StartEngineEventListener> getStartEngineEventListeners()
-	{
-		return _startEngineEventListeners;
-	}
+            return processEngine;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
-	public void setStartEngineEventListeners(List<StartEngineEventListener> startEngineEventListeners)
-	{
-		_startEngineEventListeners = startEngineEventListeners;
-	}
+    public List<StartEngineEventListener> getStartEngineEventListeners() {
+        return _startEngineEventListeners;
+    }
+
+    public void setStartEngineEventListeners(List<StartEngineEventListener> startEngineEventListeners) {
+        _startEngineEventListeners = startEngineEventListeners;
+    }
 
 }

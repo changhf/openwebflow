@@ -1,30 +1,26 @@
 package org.openwebflow.mgr.mem;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.openwebflow.ctrl.RuntimeActivityDefinitionEntity;
 import org.openwebflow.ctrl.RuntimeActivityDefinitionManager;
 
-public class InMemoryRuntimeActivityDefinitionManager implements RuntimeActivityDefinitionManager
-{
-	private static List<RuntimeActivityDefinitionEntity> _list = new ArrayList<RuntimeActivityDefinitionEntity>();
+import java.util.ArrayList;
+import java.util.List;
 
-	@Override
-	public List<RuntimeActivityDefinitionEntity> list()
-	{
-		return _list;
-	}
+public class InMemoryRuntimeActivityDefinitionManager implements RuntimeActivityDefinitionManager {
+    private static List<RuntimeActivityDefinitionEntity> _list = new ArrayList<RuntimeActivityDefinitionEntity>();
 
-	@Override
-	public void removeAll()
-	{
-		_list.clear();
-	}
+    @Override
+    public List<RuntimeActivityDefinitionEntity> list() {
+        return _list;
+    }
 
-	@Override
-	public void save(RuntimeActivityDefinitionEntity entity)
-	{
-		_list.add(entity);
-	}
+    @Override
+    public void removeAll() {
+        _list.clear();
+    }
+
+    @Override
+    public void save(RuntimeActivityDefinitionEntity entity) {
+        _list.add(entity);
+    }
 }

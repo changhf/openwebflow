@@ -1,9 +1,7 @@
 package test;
 
-public class SqlMybatisProcessEngineTest extends AbstractProcessEngineTest
-{
-	protected String getConfigFilePath()
-	{
-		return "classpath:activiti.cfg.sql.mybatis.xml";
-	}
+public class SqlMybatisProcessEngineTest extends AbstractProcessEngineTest {
+    protected String getConfigFilePath() {
+        return "classpath:activiti.cfg.sql.mybatis.xml";
+    }
 }

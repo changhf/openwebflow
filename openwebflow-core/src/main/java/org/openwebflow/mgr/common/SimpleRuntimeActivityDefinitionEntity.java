@@ -1,103 +1,87 @@
 package org.openwebflow.mgr.common;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.openwebflow.ctrl.RuntimeActivityDefinitionEntity;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.openwebflow.ctrl.RuntimeActivityDefinitionEntity;
+public class SimpleRuntimeActivityDefinitionEntity implements RuntimeActivityDefinitionEntity {
+    String _factoryName;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+    String _processDefinitionId;
 
-public class SimpleRuntimeActivityDefinitionEntity implements RuntimeActivityDefinitionEntity
-{
-	String _factoryName;
+    public Map<String, Object> getProperties() {
+        return _properties;
+    }
 
-	String _processDefinitionId;
+    public void setProperties(Map<String, Object> properties) {
+        _properties = properties;
+    }
 
-	public Map<String, Object> getProperties()
-	{
-		return _properties;
-	}
+    public void setFactoryName(String factoryName) {
+        _factoryName = factoryName;
+    }
 
-	public void setProperties(Map<String, Object> properties)
-	{
-		_properties = properties;
-	}
+    public void setProcessDefinitionId(String processDefinitionId) {
+        _processDefinitionId = processDefinitionId;
+    }
 
-	public void setFactoryName(String factoryName)
-	{
-		_factoryName = factoryName;
-	}
+    public void setProcessInstanceId(String processInstanceId) {
+        _processInstanceId = processInstanceId;
+    }
 
-	public void setProcessDefinitionId(String processDefinitionId)
-	{
-		_processDefinitionId = processDefinitionId;
-	}
+    public void setPropertiesText(String propertiesText) {
+        _propertiesText = propertiesText;
+    }
 
-	public void setProcessInstanceId(String processInstanceId)
-	{
-		_processInstanceId = processInstanceId;
-	}
+    String _processInstanceId;
 
-	public void setPropertiesText(String propertiesText)
-	{
-		_propertiesText = propertiesText;
-	}
+    Map<String, Object> _properties = new HashMap<String, Object>();
 
-	String _processInstanceId;
+    String _propertiesText;
 
-	Map<String, Object> _properties = new HashMap<String, Object>();
+    @Override
+    public void deserializeProperties() throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        _properties = objectMapper.readValue(_propertiesText, Map.class);
+    }
 
-	String _propertiesText;
+    @Override
+    public String getFactoryName() {
+        return _factoryName;
+    }
 
-	@Override
-	public void deserializeProperties() throws IOException
-	{
-		ObjectMapper objectMapper = new ObjectMapper();
-		_properties = objectMapper.readValue(_propertiesText, Map.class);
-	}
+    @Override
+    public String getProcessDefinitionId() {
+        return _processDefinitionId;
+    }
 
-	@Override
-	public String getFactoryName()
-	{
-		return _factoryName;
-	}
+    @Override
+    public String getProcessInstanceId() {
+        return _processInstanceId;
+    }
 
-	@Override
-	public String getProcessDefinitionId()
-	{
-		return _processDefinitionId;
-	}
+    @Override
+    public String getPropertiesText() {
+        return _propertiesText;
+    }
 
-	@Override
-	public String getProcessInstanceId()
-	{
-		return _processInstanceId;
-	}
+    @Override
+    public <T> T getProperty(String name) {
+        return (T) _properties.get(name);
+    }
 
-	@Override
-	public String getPropertiesText()
-	{
-		return _propertiesText;
-	}
+    @Override
+    public void serializeProperties() throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        _propertiesText = objectMapper.writeValueAsString(_properties);
+    }
 
-	@Override
-	public <T> T getProperty(String name)
-	{
-		return (T) _properties.get(name);
-	}
-
-	@Override
-	public void serializeProperties() throws JsonProcessingException
-	{
-		ObjectMapper objectMapper = new ObjectMapper();
-		_propertiesText = objectMapper.writeValueAsString(_properties);
-	}
-
-	@Override
-	public <T> void setProperty(String name, T value)
-	{
-		_properties.put(name, value);
-	}
+    @Override
+    public <T> void setProperty(String name, T value) {
+        _properties.put(name, value);
+    }
 }

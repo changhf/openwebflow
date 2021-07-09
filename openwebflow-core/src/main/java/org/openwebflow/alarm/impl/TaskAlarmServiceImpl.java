@@ -1,10 +1,5 @@
 package org.openwebflow.alarm.impl;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
-
 import org.activiti.engine.ProcessEngine;
 import org.activiti.engine.task.Task;
 import org.apache.log4j.Logger;
@@ -19,143 +14,123 @@ import org.openwebflow.identity.UserDetailsManager;
 import org.openwebflow.util.IdentityUtils;
 import org.springframework.beans.factory.DisposableBean;
 
-public class TaskAlarmServiceImpl implements TaskAlarmService, DisposableBean
-{
-	class MonitorTask extends TimerTask
-	{
-		Period _parsedPeriodInAdvance;
+import java.util.Date;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
-		public MonitorTask()
-		{
-			_parsedPeriodInAdvance = Period.parse(_periodInAdvance);
-		}
+public class TaskAlarmServiceImpl implements TaskAlarmService, DisposableBean {
+    class MonitorTask extends TimerTask {
+        Period _parsedPeriodInAdvance;
 
-		private void checkAndNotify() throws Exception
-		{
-			//检查即将过期的task
-			Date dueDate = DateTime.now().minus(_parsedPeriodInAdvance).toDate();
+        public MonitorTask() {
+            _parsedPeriodInAdvance = Period.parse(_periodInAdvance);
+        }
 
-			for (Task task : _processEngine.getTaskService().createTaskQuery().active().dueAfter(dueDate).list())
-			{
-				//是否已经通知？
-				if (!_taskNotificationManager.isNotified(task.getId()))
-				{
-					//没有通知则现在通知
-					List<UserDetailsEntity> involvedUsers = IdentityUtils.getUserDetailsFromIds(
-						IdentityUtils.getInvolvedUsers(_processEngine.getTaskService(), task, _membershipManager),
-						_userDetailsManager);
+        private void checkAndNotify() throws Exception {
+            //检查即将过期的task
+            Date dueDate = DateTime.now().minus(_parsedPeriodInAdvance).toDate();
 
-					if (!involvedUsers.isEmpty())
-					{
-						_messageNotifier.notify(involvedUsers.toArray(new UserDetailsEntity[0]), task);
-					}
-					//设置标志
-					_taskNotificationManager.setNotified(task.getId());
-					Logger.getLogger(getClass()).debug(String.format("notified %s", involvedUsers));
-				}
-			}
-		}
+            for (Task task : _processEngine.getTaskService().createTaskQuery().active().dueAfter(dueDate).list()) {
+                //是否已经通知？
+                if (!_taskNotificationManager.isNotified(task.getId())) {
+                    //没有通知则现在通知
+                    List<UserDetailsEntity> involvedUsers = IdentityUtils.getUserDetailsFromIds(
+                            IdentityUtils.getInvolvedUsers(_processEngine.getTaskService(), task, _membershipManager),
+                            _userDetailsManager);
 
-		@Override
-		public void run()
-		{
-			try
-			{
-				checkAndNotify();
-			}
-			catch (Exception e)
-			{
-				e.printStackTrace();
-			}
-		}
-	}
+                    if (!involvedUsers.isEmpty()) {
+                        _messageNotifier.notify(involvedUsers.toArray(new UserDetailsEntity[0]), task);
+                    }
+                    //设置标志
+                    _taskNotificationManager.setNotified(task.getId());
+                    Logger.getLogger(getClass()).debug(String.format("notified %s", involvedUsers));
+                }
+            }
+        }
 
-	long _checkInterval = 10000;
+        @Override
+        public void run() {
+            try {
+                checkAndNotify();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
-	IdentityMembershipManager _membershipManager;
+    long _checkInterval = 10000;
 
-	MessageNotifier _messageNotifier;
+    IdentityMembershipManager _membershipManager;
 
-	private Timer _monitorTimer = new Timer(true);
+    MessageNotifier _messageNotifier;
 
-	TaskNotificationManager _taskNotificationManager;
+    private Timer _monitorTimer = new Timer(true);
 
-	public TaskNotificationManager getTaskNotificationManager()
-	{
-		return _taskNotificationManager;
-	}
+    TaskNotificationManager _taskNotificationManager;
 
-	public void setTaskNotificationManager(TaskNotificationManager taskNotificationManager)
-	{
-		_taskNotificationManager = taskNotificationManager;
-	}
+    public TaskNotificationManager getTaskNotificationManager() {
+        return _taskNotificationManager;
+    }
 
-	String _periodInAdvance;
+    public void setTaskNotificationManager(TaskNotificationManager taskNotificationManager) {
+        _taskNotificationManager = taskNotificationManager;
+    }
 
-	ProcessEngine _processEngine;
+    String _periodInAdvance;
 
-	UserDetailsManager _userDetailsManager;
+    ProcessEngine _processEngine;
 
-	@Override
-	public void destroy() throws Exception
-	{
-		_monitorTimer.cancel();
-	}
+    UserDetailsManager _userDetailsManager;
 
-	public long getCheckInterval()
-	{
-		return _checkInterval;
-	}
+    @Override
+    public void destroy() throws Exception {
+        _monitorTimer.cancel();
+    }
 
-	public IdentityMembershipManager getMembershipManager()
-	{
-		return _membershipManager;
-	}
+    public long getCheckInterval() {
+        return _checkInterval;
+    }
 
-	public MessageNotifier getMessageNotifier()
-	{
-		return _messageNotifier;
-	}
+    public IdentityMembershipManager getMembershipManager() {
+        return _membershipManager;
+    }
 
-	public String getPeriodInAdvance()
-	{
-		return _periodInAdvance;
-	}
+    public MessageNotifier getMessageNotifier() {
+        return _messageNotifier;
+    }
 
-	public UserDetailsManager getUserDetailsManager()
-	{
-		return _userDetailsManager;
-	}
+    public String getPeriodInAdvance() {
+        return _periodInAdvance;
+    }
 
-	public void setCheckInterval(long checkInterval)
-	{
-		_checkInterval = checkInterval;
-	}
+    public UserDetailsManager getUserDetailsManager() {
+        return _userDetailsManager;
+    }
 
-	public void setMembershipManager(IdentityMembershipManager membershipManager)
-	{
-		_membershipManager = membershipManager;
-	}
+    public void setCheckInterval(long checkInterval) {
+        _checkInterval = checkInterval;
+    }
 
-	public void setMessageNotifier(MessageNotifier messageNotifier)
-	{
-		_messageNotifier = messageNotifier;
-	}
+    public void setMembershipManager(IdentityMembershipManager membershipManager) {
+        _membershipManager = membershipManager;
+    }
 
-	public void setPeriodInAdvance(String periodInAdvance)
-	{
-		_periodInAdvance = periodInAdvance;
-	}
+    public void setMessageNotifier(MessageNotifier messageNotifier) {
+        _messageNotifier = messageNotifier;
+    }
 
-	public void setUserDetailsManager(UserDetailsManager userDetailsManager)
-	{
-		_userDetailsManager = userDetailsManager;
-	}
+    public void setPeriodInAdvance(String periodInAdvance) {
+        _periodInAdvance = periodInAdvance;
+    }
 
-	@Override
-	public void start(ProcessEngine processEngine) throws Exception
-	{
-		_processEngine = processEngine;
-		_monitorTimer.schedule(new MonitorTask(), _checkInterval, _checkInterval);
-	}
+    public void setUserDetailsManager(UserDetailsManager userDetailsManager) {
+        _userDetailsManager = userDetailsManager;
+    }
+
+    @Override
+    public void start(ProcessEngine processEngine) throws Exception {
+        _processEngine = processEngine;
+        _monitorTimer.schedule(new MonitorTask(), _checkInterval, _checkInterval);
+    }
 }
