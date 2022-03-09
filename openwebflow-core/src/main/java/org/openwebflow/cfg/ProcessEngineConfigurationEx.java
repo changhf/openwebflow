@@ -5,6 +5,9 @@ import org.activiti.spring.SpringProcessEngineConfiguration;
 
 import java.util.List;
 
+/**
+ * 定义工作流引擎启动的时候需要同时启动的其它任务
+ */
 public class ProcessEngineConfigurationEx extends SpringProcessEngineConfiguration {
     List<StartEngineEventListener> _startEngineEventListeners;
 

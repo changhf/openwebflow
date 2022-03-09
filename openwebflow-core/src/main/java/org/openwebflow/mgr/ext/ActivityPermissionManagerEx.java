@@ -1,5 +1,8 @@
 package org.openwebflow.mgr.ext;
 
+/**
+ * 活动权限管理
+ */
 public interface ActivityPermissionManagerEx {
     /**
      * 删除所有权限定义信息

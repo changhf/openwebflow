@@ -4,6 +4,9 @@ import org.activiti.engine.ProcessEngine;
 import org.activiti.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.openwebflow.alarm.TaskAlarmService;
 
+/**
+ * 启动任务催办服务
+ */
 public class StartTaskAlarmService implements StartEngineEventListener {
     boolean _runOnStartup = true;
 
